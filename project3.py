@@ -10,6 +10,13 @@ def create_diagram():
         'Green': '\033[92m*\033[0m',  # Green
         'White': '\033[97m*\033[0m'   # White
     }
+    single_letter_codes = {
+        'Red': 'R',
+        'Blue': 'B',
+        'Yellow': 'Y',
+        'Green': 'G',
+        'White': 'W'
+    }
     diagram = [[color_codes['White'] for _ in range(20)] for _ in range(20)]
     wire_order = []
 
@@ -34,10 +41,17 @@ def create_diagram():
                 diagram[i][col] = color_codes[chosen_color]
             start_with_row = True  # Switch to row for the next iteration
 
-    return diagram, wire_order
+    flattened_diagram = []
+    for row in diagram:
+        for cell in row:
+            for color, code in color_codes.items():
+                if cell == code:
+                    flattened_diagram.append(single_letter_codes[color])
+
+    return diagram, wire_order, flattened_diagram
 
 # Create and print the diagram and wire order
-diagram, wire_order = create_diagram()
+diagram, wire_order, flattened_diagram = create_diagram()
 for row in diagram:
     print(' '.join(row))
 
@@ -52,5 +66,4 @@ if status == "Dangerous":
     print("Wire to cut:", wire_order[2])
 
 # Convert the diagram into a 1D array
-flattened_diagram = [cell for row in diagram for cell in row]
-print("\nFlattened Diagram:", flattened_diagram[:30])  # Print the first 30 elements
+print("\nFlattened Diagram:", flattened_diagram)
