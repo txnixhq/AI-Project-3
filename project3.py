@@ -27,6 +27,15 @@ def vector_add(a, b):
     return [x + y for x, y in zip(a, b)]
 
 
+def one_hot_encode(color):
+    return {'R': [1, 0, 0, 0, 0],
+            'B': [0, 1, 0, 0, 0],
+            'Y': [0, 0, 1, 0, 0],
+            'G': [0, 0, 0, 1, 0],
+            'W': [0, 0, 0, 0, 1]}[color]
+
+
+
 
 def create_diagram():
     colors = ['R', 'B', 'Y', 'G']
@@ -126,18 +135,11 @@ class LogisticRegressionModel:
             self.bias -= learning_rate * avg_gradient_b
 
 
-def one_hot_encode(color):
-    return {'R': [1, 0, 0, 0, 0],
-            'B': [0, 1, 0, 0, 0],
-            'Y': [0, 0, 1, 0, 0],
-            'G': [0, 0, 0, 1, 0],
-            'W': [0, 0, 0, 0, 1]}[color]
-
 
 # Generate dataset
 data = []
 labels = []
-for _ in range(2500):  # Number of samples
+for _ in range(2000):  # Number of samples
     diagram, wire_order, arrayInput = create_diagram()
     feature_vector = []
     # Add one-hot encoded colors from arrayInput
@@ -149,7 +151,7 @@ for _ in range(2500):  # Number of samples
             feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
 
     data.append(feature_vector)
-    labels.append(1 if "Red" in wire_order and "Yellow" in wire_order and wire_order.index("Red") < wire_order.index("Yellow") else 0)
+    labels.append(1 if "R" in wire_order and "Y" in wire_order and wire_order.index("R") < wire_order.index("Y") else 0)
 
 
 
