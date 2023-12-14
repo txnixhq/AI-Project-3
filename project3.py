@@ -37,7 +37,8 @@ def vector_add(a, b):
 
 #for the softmax model
 def softmax(logits):
-    exps = [math.exp(i - max(logits)) for i in logits]
+    max_logit = max(logits)
+    exps = [math.exp(i - max_logit) for i in logits]
     sum_of_exps = sum(exps)
     return [j / sum_of_exps for j in exps]
 
@@ -161,6 +162,10 @@ class LogisticRegressionModel:
             self.weights = vector_subtract(self.weights, scalar_multiply(learning_rate, avg_gradient_w))
             self.bias -= learning_rate * avg_gradient_b
 
+        # Print average loss every epoch
+            avg_loss = total_loss / len(x_train)
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Average Loss = {avg_loss}")
 
 #Softmax for task 2
 class SoftmaxRegressionModel:
@@ -176,8 +181,8 @@ class SoftmaxRegressionModel:
         return softmax(logits)
 
     def cross_entropy_loss(self, y_true, y_pred):
-        # Compute cross-entropy loss
         return -sum(y_true[i] * math.log(y_pred[i] + 1e-15) for i in range(len(y_true)))
+
 
     def train(self, x_train, y_train, epochs, learning_rate):
         for epoch in range(epochs):
@@ -237,7 +242,32 @@ def get_color_transition_feature(diagram, row, col):
                     transitions += 1
     return [transitions]
 
+# Function to count colors in the diagram
+def count_colors(diagram):
+    color_count = {'R': 0, 'B': 0, 'Y': 0, 'G': 0, 'W': 0}  # Initialize count for each color
+    for row in diagram:
+        for cell in row:
+            color_count[cell] += 1
+    return list(color_count.values())
 
+# Function to count color transitions in rows and columns
+def count_color_transitions(diagram):
+    row_transitions = [0] * len(diagram)
+    col_transitions = [0] * len(diagram[0])
+
+    # Count transitions in rows
+    for i, row in enumerate(diagram):
+        for j in range(1, len(row)):
+            if row[j] != row[j-1]:
+                row_transitions[i] += 1
+
+    # Count transitions in columns
+    for j in range(len(diagram[0])):
+        for i in range(1, len(diagram)):
+            if diagram[i][j] != diagram[i-1][j]:
+                col_transitions[j] += 1
+
+    return row_transitions + col_transitions
 
 # Generate dataset
 def create_dataset(num, task_number):
@@ -248,27 +278,38 @@ def create_dataset(num, task_number):
         if task_number == 1:
             # Task 1: Predicting if a diagram is dangerous
             diagram, wire_order, arrayInput = create_diagram()
-            feature_vector = []
+            feature_vector = count_colors(diagram)  # Add color counts to feature vector
+
+            # Existing feature extraction
             for color in arrayInput:
                 feature_vector.extend(one_hot_encode(color))
             for row_idx in range(len(diagram)):
                 for col_idx in range(len(diagram[0])):
                     feature_vector.extend(get_neighborhood_feature(diagram, row_idx, col_idx))
-                    feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
+                    #feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
+
             label = 1 if "R" in wire_order and "Y" in wire_order and wire_order.index("R") < wire_order.index("Y") else 0
 
         elif task_number == 2:
             # Task 2: Predicting which wire to cut in a dangerous diagram
             diagram, wire_order, arrayInput, wire_to_cut = create_dangerous_diagram()
             feature_vector = []
+
+            # Add color transitions to feature vector
+            feature_vector.extend(count_color_transitions(diagram))
+
+            # Existing feature extraction
             for color in arrayInput:
                 feature_vector.extend(one_hot_encode(color))
             for row_idx in range(len(diagram)):
                 for col_idx in range(len(diagram[0])):
                     feature_vector.extend(get_neighborhood_feature(diagram, row_idx, col_idx))
                     feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
+
             wire_to_cut_index = ['R', 'B', 'Y', 'G'].index(wire_to_cut)
             label = [1 if i == wire_to_cut_index else 0 for i in range(4)]
+            data.append(feature_vector)
+            labels.append(label)
 
         # Add to dataset
         data.append(feature_vector)
@@ -324,7 +365,7 @@ x_test_scaled = standardize(x_test)
 if taskN == 1:
     # Logistic Regression for Task 1
     model = LogisticRegressionModel(len(x_train_scaled[0]), reg_lambda=0.01)
-    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.03)
+    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.02)
 
     # Testing the model
     correct_predictions = 0
@@ -346,7 +387,7 @@ if taskN == 1:
 elif taskN == 2:
     # Softmax Regression for Task 2
     model = SoftmaxRegressionModel(len(x_train_scaled[0]), 4, reg_lambda=0.01)
-    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.03)
+    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.01)
 
     # Evaluate the model
     accuracy = model.evaluate(x_test_scaled, y_test)
