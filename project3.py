@@ -11,6 +11,15 @@ def log_loss(y_true, y_pred):
     epsilon = 1e-15  # To prevent log(0)
     return -sum(y * math.log(max(p, epsilon)) + (1 - y) * math.log(max(1 - p, epsilon)) for y, p in zip(y_true, y_pred)) / len(y_true)
 
+#log loss for task2
+def multi_class_log_loss(y_true, y_pred):
+    epsilon = 1e-15
+    loss = 0
+    for y_t, y_p in zip(y_true, y_pred):
+        loss += -sum(y * math.log(max(p, epsilon)) for y, p in zip(y_t, y_p))
+    return loss / len(y_true)
+
+
 # Dot product
 def dot_product(a, b):
     return sum(x * y for x, y in zip(a, b))
@@ -26,6 +35,13 @@ def vector_subtract(a, b):
 def vector_add(a, b):
     return [x + y for x, y in zip(a, b)]
 
+#for the softmax model
+def softmax(logits):
+    exps = [math.exp(i - max(logits)) for i in logits]
+    sum_of_exps = sum(exps)
+    return [j / sum_of_exps for j in exps]
+
+
 
 def one_hot_encode(color):
     return {'R': [1, 0, 0, 0, 0],
@@ -36,7 +52,7 @@ def one_hot_encode(color):
 
 
 
-
+# THIS IS FOR TASK1
 def create_diagram():
     colors = ['R', 'B', 'Y', 'G']
     wire_order = []
@@ -67,27 +83,38 @@ def create_diagram():
     return diagram, wire_order, arrayInput
 
 
-def get_neighborhood_feature(diagram, row, col):
-    neighbors = []
-    for i in [-1, 0, 1]:
-        for j in [-1, 0, 1]:
-            if 0 <= row + i < len(diagram) and 0 <= col + j < len(diagram[0]):
-                neighbors.append(diagram[row + i][col + j])
-    feature = {'R': 0, 'B': 0, 'Y': 0, 'G': 0, 'W': 0}
-    for color in neighbors:
-        feature[color[0]] += 1
-    return list(feature.values())
+#THIS IS FOR TASK 2
+def create_dangerous_diagram():
+    colors = ['R', 'B', 'Y', 'G']
+    random.shuffle(colors)
 
-def get_color_transition_feature(diagram, row, col):
-    current_color = diagram[row][col][0]
-    transitions = 0
-    for i in [-1, 0, 1]:
-        for j in [-1, 0, 1]:
-            if 0 <= row + i < len(diagram) and 0 <= col + j < len(diagram[0]):
-                neighbor_color = diagram[row + i][col + j][0]
-                if current_color != neighbor_color:
-                    transitions += 1
-    return [transitions]
+    # Ensure the diagram is dangerous ('R' comes before 'Y')
+    while colors.index('R') > colors.index('Y'):
+        random.shuffle(colors)
+
+    start_with_row = random.choice([True, False])
+    diagram = [['W' for _ in range(20)] for _ in range(20)]
+
+    for color in colors:
+        if start_with_row:
+            row = random.randint(0, 19)
+            for i in range(20):
+                diagram[row][i] = color
+            start_with_row = False
+        else:
+            col = random.randint(0, 19)
+            for i in range(20):
+                diagram[i][col] = color
+            start_with_row = True
+
+    arrayInput = [cell for row in diagram for cell in row]
+
+    # Determine the wire to cut based on your project's specific rule
+    # For example, cutting the third wire laid down
+    wire_to_cut = colors[2]
+
+    return diagram, colors, arrayInput, wire_to_cut
+
 
 
 # Logistic Regression Model
@@ -135,36 +162,130 @@ class LogisticRegressionModel:
             self.bias -= learning_rate * avg_gradient_b
 
 
+#Softmax for task 2
+class SoftmaxRegressionModel:
+    def __init__(self, input_size, num_classes, reg_lambda=0.01):
+        # Initialize weights and bias
+        self.weights = [[random.uniform(-0.01, 0.01) for _ in range(num_classes)] for _ in range(input_size)]
+        self.bias = [0.0 for _ in range(num_classes)]
+        self.reg_lambda = reg_lambda
+
+    def predict(self, x):
+        # Compute logits and apply softmax
+        logits = [sum(x[i] * self.weights[i][j] for i in range(len(x))) + self.bias[j] for j in range(len(self.bias))]
+        return softmax(logits)
+
+    def cross_entropy_loss(self, y_true, y_pred):
+        # Compute cross-entropy loss
+        return -sum(y_true[i] * math.log(y_pred[i] + 1e-15) for i in range(len(y_true)))
+
+    def train(self, x_train, y_train, epochs, learning_rate):
+        for epoch in range(epochs):
+            total_loss = 0
+
+            for x, y_true in zip(x_train, y_train):
+                y_pred = self.predict(x)
+
+                # Compute error and loss
+                error = [y_pred[i] - y_true[i] for i in range(len(y_true))]
+                total_loss += self.cross_entropy_loss(y_true, y_pred)
+
+                # Compute gradients
+                gradients_w = [[x[i] * error[j] for j in range(len(error))] for i in range(len(x))]
+                gradient_b = error
+
+                # Update weights and bias with regularization
+                self.weights = [[self.weights[i][j] - learning_rate * (gradients_w[i][j] + self.reg_lambda * self.weights[i][j]) for j in range(len(self.weights[0]))] for i in range(len(self.weights))]
+                self.bias = [self.bias[j] - learning_rate * gradient_b[j] for j in range(len(self.bias))]
+
+            # Print average loss every epoch
+            avg_loss = total_loss / len(x_train)
+            if epoch % 10 == 0:
+                print(f"Epoch {epoch}: Average Loss = {avg_loss}")
+
+    def evaluate(self, x_test, y_test):
+        correct_predictions = 0
+        for x, y_true in zip(x_test, y_test):
+            y_pred = self.predict(x)
+            predicted_class = y_pred.index(max(y_pred))
+            true_class = y_true.index(max(y_true))
+            if predicted_class == true_class:
+                correct_predictions += 1
+
+        return correct_predictions / len(x_test) * 100
+
+
+def get_neighborhood_feature(diagram, row, col):
+    feature = [0] * 5  # For 5 possible colors
+    for i in [-1, 0, 1]:
+        for j in [-1, 0, 1]:
+            if 0 <= row + i < len(diagram) and 0 <= col + j < len(diagram[0]):
+                color = diagram[row + i][col + j]
+                encoded_color = one_hot_encode(color)
+                feature = [f + e for f, e in zip(feature, encoded_color)]
+    return feature
+
+def get_color_transition_feature(diagram, row, col):
+    transitions = 0
+    current_color_encoded = one_hot_encode(diagram[row][col])
+    for i in [-1, 0, 1]:
+        for j in [-1, 0, 1]:
+            if 0 <= row + i < len(diagram) and 0 <= col + j < len(diagram[0]):
+                neighbor_color = diagram[row + i][col + j]
+                neighbor_color_encoded = one_hot_encode(neighbor_color)
+                if current_color_encoded != neighbor_color_encoded:
+                    transitions += 1
+    return [transitions]
+
+
 
 # Generate dataset
-data = []
-labels = []
-for _ in range(2000):  # Number of samples
-    diagram, wire_order, arrayInput = create_diagram()
-    feature_vector = []
-    # Add one-hot encoded colors from arrayInput
-    for color in arrayInput:
-        feature_vector.extend(one_hot_encode(color[0]))
-    for row_idx in range(len(diagram)):
-        for col_idx in range(len(diagram[0])):
-            feature_vector.extend(get_neighborhood_feature(diagram, row_idx, col_idx))
-            feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
+def create_dataset(num, task_number):
+    data = []
+    labels = []
 
-    data.append(feature_vector)
-    labels.append(1 if "R" in wire_order and "Y" in wire_order and wire_order.index("R") < wire_order.index("Y") else 0)
+    for _ in range(num):
+        if task_number == 1:
+            # Task 1: Predicting if a diagram is dangerous
+            diagram, wire_order, arrayInput = create_diagram()
+            feature_vector = []
+            for color in arrayInput:
+                feature_vector.extend(one_hot_encode(color))
+            for row_idx in range(len(diagram)):
+                for col_idx in range(len(diagram[0])):
+                    feature_vector.extend(get_neighborhood_feature(diagram, row_idx, col_idx))
+                    feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
+            label = 1 if "R" in wire_order and "Y" in wire_order and wire_order.index("R") < wire_order.index("Y") else 0
+
+        elif task_number == 2:
+            # Task 2: Predicting which wire to cut in a dangerous diagram
+            diagram, wire_order, arrayInput, wire_to_cut = create_dangerous_diagram()
+            feature_vector = []
+            for color in arrayInput:
+                feature_vector.extend(one_hot_encode(color))
+            for row_idx in range(len(diagram)):
+                for col_idx in range(len(diagram[0])):
+                    feature_vector.extend(get_neighborhood_feature(diagram, row_idx, col_idx))
+                    feature_vector.extend(get_color_transition_feature(diagram, row_idx, col_idx))
+            wire_to_cut_index = ['R', 'B', 'Y', 'G'].index(wire_to_cut)
+            label = [1 if i == wire_to_cut_index else 0 for i in range(4)]
+
+        # Add to dataset
+        data.append(feature_vector)
+        labels.append(label)
+
+    return data, labels
+
 
 
 
 def split_data(data, labels, train_ratio=0.9):
     combined = list(zip(data, labels))
-    random.shuffle(combined)
+    random.shuffle(combined) #do i need to shuffle this?
     train_size = int(len(combined) * train_ratio)
     train, test = combined[:train_size], combined[train_size:]
     return train, test
 
-train_data, test_data = split_data(data, labels)
-x_train, y_train = list(zip(*train_data))  
-x_test, y_test = list(zip(*test_data))    
 
 
 def standardize(data):
@@ -180,31 +301,61 @@ def standardize(data):
         standardized_data.append(standardized_row)
     return standardized_data
 
+
+
+#IMPLEMENTATION
+
+# Declare the task 
+taskN = int(input("Enter the task number (1 or 2): "))
+#create data
+data, labels = create_dataset(2000, taskN)
+
+#split dataset
+train_data, test_data = split_data(data, labels)
+x_train, y_train = list(zip(*train_data))  
+x_test, y_test = list(zip(*test_data))    
+
+
 # Apply standardization to your data
 x_train_scaled = standardize(x_train)
 x_test_scaled = standardize(x_test)
 
-# Train the model with scaled data
-model = LogisticRegressionModel(len(x_train_scaled[0]), reg_lambda=0.01)
-model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.03)
+#run models
+if taskN == 1:
+    # Logistic Regression for Task 1
+    model = LogisticRegressionModel(len(x_train_scaled[0]), reg_lambda=0.01)
+    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.03)
 
-# testing the model
-correct_predictions = 0
-for x, y_true in zip(x_test_scaled, y_test):
-    y_pred = model.predict(x)
-    correct_predictions += 1 if (y_pred > 0.5) == y_true else 0
+    # Testing the model
+    correct_predictions = 0
+    for x, y_true in zip(x_test_scaled, y_test):
+        y_pred = model.predict(x)
+        correct_predictions += 1 if (y_pred > 0.5) == y_true else 0
 
+    accuracy = correct_predictions / len(x_test_scaled) * 100
 
-accuracy = correct_predictions / len(x_test) * 100
+    # After training, calculate predictions for the test set
+    y_pred_test = [model.predict(x) for x in x_test_scaled]
 
+    # Calculate the average log loss on the test set
+    average_log_loss = log_loss(y_test, y_pred_test)
 
-# After training, calculate predictions for the test set
-y_pred_test = [model.predict(x) for x in x_test]
+    print(f"Model accuracy for Task 1: {accuracy}%")
+    print(f"Average Log Loss for Task 1: {average_log_loss}")
 
-# Calculate the average log loss on the test set
-average_log_loss = log_loss(y_test, y_pred_test)
+elif taskN == 2:
+    # Softmax Regression for Task 2
+    model = SoftmaxRegressionModel(len(x_train_scaled[0]), 4, reg_lambda=0.01)
+    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.03)
 
-print(f"Model accuracy: {accuracy}%")
+    # Evaluate the model
+    accuracy = model.evaluate(x_test_scaled, y_test)
 
-# Print the average log loss
-print(f"Average Log Loss: {average_log_loss}")
+    # After training, calculate predictions for the test set
+    y_pred_test = [model.predict(x) for x in x_test_scaled]
+
+    # Calculate the average log loss on the test set for multi-class classification
+    average_log_loss = multi_class_log_loss(y_test, y_pred_test)
+
+    print(f"Model accuracy for Task 2: {accuracy}%")
+    print(f"Average Log Loss for Task 2: {average_log_loss}")
