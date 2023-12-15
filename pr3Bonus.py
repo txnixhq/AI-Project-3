@@ -4,6 +4,7 @@ import random
 import math
 
 # THIS IS FOR TASK1
+# Function to create a non-dangerous wire diagram for Task 1
 def create_diagram():
     colors = ['R', 'B', 'Y', 'G']
     wire_order = []
@@ -35,6 +36,7 @@ def create_diagram():
 
 
 #THIS IS FOR TASK 2
+# Function to create a dangerous wire diagram for Task 2
 def create_dangerous_diagram():
     colors = ['R', 'B', 'Y', 'G']
     random.shuffle(colors)
@@ -67,7 +69,7 @@ def create_dangerous_diagram():
     return diagram, colors, arrayInput, wire_to_cut
 
 
-
+# Function to count colors in a neighborhood for a given cell
 def get_neighborhood_color_counts(diagram, row, col):
     color_count = {'R': 0, 'B': 0, 'Y': 0, 'G': 0, 'W': 0}
     for i in [-1, 0, 1]:
@@ -76,7 +78,8 @@ def get_neighborhood_color_counts(diagram, row, col):
                 color = diagram[row + i][col + j]
                 color_count[color] += 1
     return list(color_count.values())
-
+    
+# Function to count local color transitions for a given cell
 def get_local_color_transitions(diagram, row, col):
     transitions = 0
     current_color = diagram[row][col]
