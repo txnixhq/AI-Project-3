@@ -1,17 +1,17 @@
 import random
 import math
 
-# Sigmoid function
+# Sigmoid function for Logistic Regression
 def sigmoid(z):
     z = max(min(z, 20), -20)  # Limit z to be within [-20, 20]
     return 1 / (1 + math.exp(-z))
 
-# Log Loss function
+# Log Loss function for Binary Classification
 def log_loss(y_true, y_pred):
     epsilon = 1e-15  # To prevent log(0)
     return -sum(y * math.log(max(p, epsilon)) + (1 - y) * math.log(max(1 - p, epsilon)) for y, p in zip(y_true, y_pred)) / len(y_true)
 
-#log loss for task2
+#multi-class logg loss for multi class classification
 def multi_class_log_loss(y_true, y_pred):
     epsilon = 1e-15
     loss = 0
@@ -20,11 +20,11 @@ def multi_class_log_loss(y_true, y_pred):
     return loss / len(y_true)
 
 
-# Dot product
+# Dot product function
 def dot_product(a, b):
     return sum(x * y for x, y in zip(a, b))
 
-# Scalar multiplication
+# Scalar multiplication function
 def scalar_multiply(scalar, matrix):
     return [scalar * x for x in matrix]
 
@@ -42,8 +42,7 @@ def softmax(logits):
     sum_of_exps = sum(exps)
     return [j / sum_of_exps for j in exps]
 
-
-
+#one hot encoding function
 def one_hot_encode(color):
     return {'R': [1, 0, 0, 0, 0],
             'B': [0, 1, 0, 0, 0],
@@ -53,7 +52,7 @@ def one_hot_encode(color):
 
 
 
-# THIS IS FOR TASK1
+# Function to create diagram for Task 1
 def create_diagram():
     colors = ['R', 'B', 'Y', 'G']
     wire_order = []
@@ -84,7 +83,7 @@ def create_diagram():
     return diagram, wire_order, arrayInput
 
 
-#THIS IS FOR TASK 2
+#Function to create diagram for task 2
 def create_dangerous_diagram():
     colors = ['R', 'B', 'Y', 'G']
     random.shuffle(colors)
@@ -167,7 +166,7 @@ class LogisticRegressionModel:
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}: Average Loss = {avg_loss}")
 
-#Softmax for task 2
+#Softmax Regression Model
 class SoftmaxRegressionModel:
     def __init__(self, input_size, num_classes, reg_lambda=0.01):
         # Initialize weights and bias
@@ -180,10 +179,11 @@ class SoftmaxRegressionModel:
         logits = [sum(x[i] * self.weights[i][j] for i in range(len(x))) + self.bias[j] for j in range(len(self.bias))]
         return softmax(logits)
 
+    #Function to calculate the cross-entropy loss
     def cross_entropy_loss(self, y_true, y_pred):
         return -sum(y_true[i] * math.log(y_pred[i] + 1e-15) for i in range(len(y_true)))
 
-
+    #Main training function
     def train(self, x_train, y_train, epochs, learning_rate, batch_size=32):
         for epoch in range(epochs):
             total_loss = 0
@@ -222,6 +222,7 @@ class SoftmaxRegressionModel:
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}: Average Loss = {avg_loss}")
 
+    #function to evaluate accuracy
     def evaluate(self, x_test, y_test):
         correct_predictions = 0
         for x, y_true in zip(x_test, y_test):
@@ -234,6 +235,7 @@ class SoftmaxRegressionModel:
         return correct_predictions / len(x_test) * 100
 
 
+#function to extract neighborhood feature
 def get_neighborhood_feature(diagram, row, col):
     feature = [0] * 5  # For 5 possible colors
     for i in [-1, 0, 1]:
@@ -244,6 +246,7 @@ def get_neighborhood_feature(diagram, row, col):
                 feature = [f + e for f, e in zip(feature, encoded_color)]
     return feature
 
+#color transition feature extraction
 def get_color_transition_feature(diagram, row, col):
     transitions = 0
     current_color_encoded = one_hot_encode(diagram[row][col])
@@ -332,8 +335,7 @@ def create_dataset(num, task_number):
     return data, labels
 
 
-
-
+#function to split dataset into training and testing
 def split_data(data, labels, train_ratio=0.9):
     combined = list(zip(data, labels))
     random.shuffle(combined) #do i need to shuffle this?
@@ -341,8 +343,7 @@ def split_data(data, labels, train_ratio=0.9):
     train, test = combined[:train_size], combined[train_size:]
     return train, test
 
-
-
+#function to standardize the dataset
 def standardize(data):
     # Assuming data is a list of lists (each inner list is a feature vector)
     features = zip(*data)
@@ -358,59 +359,63 @@ def standardize(data):
 
 
 
-#IMPLEMENTATION
+#IMPLEMENTATION OF THE LOGIC
 
-# Declare the task 
-taskN = int(input("Enter the task number (1 or 2): "))
-#create data
-data, labels = create_dataset(1000, taskN)
+def main():
+    # Declare the task 
+    taskN = int(input("Enter the task number (1 or 2): "))
+    #create data
+    data, labels = create_dataset(1000, taskN)
 
-#split dataset
-train_data, test_data = split_data(data, labels)
-x_train, y_train = list(zip(*train_data))  
-x_test, y_test = list(zip(*test_data))    
+    #split dataset
+    train_data, test_data = split_data(data, labels)
+    x_train, y_train = list(zip(*train_data))  
+    x_test, y_test = list(zip(*test_data))    
 
 
-# Apply standardization to your data
-x_train_scaled = standardize(x_train)
-x_test_scaled = standardize(x_test)
+    # Apply standardization to your data
+    x_train_scaled = standardize(x_train)
+    x_test_scaled = standardize(x_test)
 
-#run models
-if taskN == 1:
-    # Logistic Regression for Task 1
-    model = LogisticRegressionModel(len(x_train_scaled[0]), reg_lambda=0.01)
-    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.02)
+    #run models
+    if taskN == 1:
+        # Logistic Regression for Task 1
+        model = LogisticRegressionModel(len(x_train_scaled[0]), reg_lambda=0.01)
+        model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.02)
 
-    # Testing the model
-    correct_predictions = 0
-    for x, y_true in zip(x_test_scaled, y_test):
-        y_pred = model.predict(x)
-        correct_predictions += 1 if (y_pred > 0.5) == y_true else 0
+        # Testing the model
+        correct_predictions = 0
+        for x, y_true in zip(x_test_scaled, y_test):
+            y_pred = model.predict(x)
+            correct_predictions += 1 if (y_pred > 0.5) == y_true else 0
 
-    accuracy = correct_predictions / len(x_test_scaled) * 100
+        accuracy = correct_predictions / len(x_test_scaled) * 100
 
-    # After training, calculate predictions for the test set
-    y_pred_test = [model.predict(x) for x in x_test_scaled]
+        # After training, calculate predictions for the test set
+        y_pred_test = [model.predict(x) for x in x_test_scaled]
 
-    # Calculate the average log loss on the test set
-    average_log_loss = log_loss(y_test, y_pred_test)
+        # Calculate the average log loss on the test set
+        average_log_loss = log_loss(y_test, y_pred_test)
 
-    print(f"Model accuracy for Task 1: {accuracy}%")
-    print(f"Average Log Loss for Task 1: {average_log_loss}")
+        print(f"Model accuracy for Task 1: {accuracy}%")
+        print(f"Average Log Loss for Task 1: {average_log_loss}")
 
-elif taskN == 2:
-    # Softmax Regression for Task 2
-    model = SoftmaxRegressionModel(len(x_train_scaled[0]), 4, reg_lambda=0.01)
-    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.005, batch_size=32)
+    elif taskN == 2:
+        # Softmax Regression for Task 2
+        model = SoftmaxRegressionModel(len(x_train_scaled[0]), 4, reg_lambda=0.01)
+        model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.005, batch_size=32)
 
-    # Evaluate the model
-    accuracy = model.evaluate(x_test_scaled, y_test)
+        # Evaluate the model
+        accuracy = model.evaluate(x_test_scaled, y_test)
 
-    # After training, calculate predictions for the test set
-    y_pred_test = [model.predict(x) for x in x_test_scaled]
+        # After training, calculate predictions for the test set
+        y_pred_test = [model.predict(x) for x in x_test_scaled]
 
-    # Calculate the average log loss on the test set for multi-class classification
-    average_log_loss = multi_class_log_loss(y_test, y_pred_test)
+        # Calculate the average log loss on the test set for multi-class classification
+        average_log_loss = multi_class_log_loss(y_test, y_pred_test)
 
-    print(f"Model accuracy for Task 2: {accuracy}%")
-    print(f"Average Log Loss for Task 2: {average_log_loss}")
+        print(f"Model accuracy for Task 2: {accuracy}%")
+        print(f"Average Log Loss for Task 2: {average_log_loss}")
+
+if __name__ == "__main__":
+    main()
