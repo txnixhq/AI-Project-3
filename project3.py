@@ -184,33 +184,40 @@ class SoftmaxRegressionModel:
         return -sum(y_true[i] * math.log(y_pred[i] + 1e-15) for i in range(len(y_true)))
 
 
-    def train(self, x_train, y_train, epochs, learning_rate):
+    def train(self, x_train, y_train, epochs, learning_rate, batch_size=32):
         for epoch in range(epochs):
             total_loss = 0
-            total_gradient_w = [[0 for _ in range(len(self.weights[0]))] for _ in range(len(self.weights))]
-            total_gradient_b = [0 for _ in range(len(self.bias))]
+            # Shuffle dataset at the beginning of each epoch
+            combined = list(zip(x_train, y_train))
+            random.shuffle(combined)
+            x_train_shuffled, y_train_shuffled = zip(*combined)
 
-            for x, y_true in zip(x_train, y_train):
-                y_pred = self.predict(x)
+            for start in range(0, len(x_train_shuffled), batch_size):
+                end = start + batch_size
+                x_batch = x_train_shuffled[start:end]
+                y_batch = y_train_shuffled[start:end]
 
-                # Compute error and loss
-                error = [y_pred[i] - y_true[i] for i in range(len(y_true))]
-                total_loss += self.cross_entropy_loss(y_true, y_pred)
+                # Initialize gradients for each batch
+                total_gradient_w = [[0 for _ in range(len(self.weights[0]))] for _ in range(len(self.weights))]
+                total_gradient_b = [0 for _ in range(len(self.bias))]
 
-                # Compute gradients for weights and bias
-                for i in range(len(x)):
-                    for j in range(len(error)):
-                        total_gradient_w[i][j] += x[i] * error[j]
-                        total_gradient_b[j] += error[j]
+                for x, y_true in zip(x_batch, y_batch):
+                    y_pred = self.predict(x)
+                    error = [y_pred[i] - y_true[i] for i in range(len(y_true))]
+                    total_loss += self.cross_entropy_loss(y_true, y_pred)
 
-            # Update weights and bias with regularization and average over batch
-            for i in range(len(self.weights)):
-                for j in range(len(self.weights[i])):
-                    self.weights[i][j] -= learning_rate * (total_gradient_w[i][j] / len(x_train) + self.reg_lambda * self.weights[i][j])
-            for j in range(len(self.bias)):
-                self.bias[j] -= learning_rate * (total_gradient_b[j] / len(x_train))
+                    for i in range(len(x)):
+                        for j in range(len(error)):
+                            total_gradient_w[i][j] += x[i] * error[j]
+                            total_gradient_b[j] += error[j]
 
-            # Print average loss every epoch
+                # Update weights and bias with regularization and average over batch
+                for i in range(len(self.weights)):
+                    for j in range(len(self.weights[i])):
+                        self.weights[i][j] -= learning_rate * (total_gradient_w[i][j] / len(x_batch) + self.reg_lambda * self.weights[i][j])
+                for j in range(len(self.bias)):
+                    self.bias[j] -= learning_rate * (total_gradient_b[j] / len(x_batch))
+
             avg_loss = total_loss / len(x_train)
             if epoch % 10 == 0:
                 print(f"Epoch {epoch}: Average Loss = {avg_loss}")
@@ -394,7 +401,7 @@ if taskN == 1:
 elif taskN == 2:
     # Softmax Regression for Task 2
     model = SoftmaxRegressionModel(len(x_train_scaled[0]), 4, reg_lambda=0.01)
-    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.01)
+    model.train(x_train_scaled, list(y_train), epochs=100, learning_rate=0.005, batch_size=32)
 
     # Evaluate the model
     accuracy = model.evaluate(x_test_scaled, y_test)
