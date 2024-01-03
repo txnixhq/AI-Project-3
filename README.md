@@ -1,4 +1,4 @@
-# AI-Project-3
+# ML-Powered Wiring Diagram Safety Analyzer
 ## Overview
 This project implements a machine learning model to analyze wiring diagrams and make critical decisions based on the diagram's layout. The primary focus is assessing whether a wiring diagram is 'Safe' or 'Dangerous' and determining which wire should be cut in the case of dangerous diagrams.
 
